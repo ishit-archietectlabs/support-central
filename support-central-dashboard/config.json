@@ -1,0 +1,33 @@
+{
+  "name": "Support Central Dashboard",
+  "version": "1.0.0",
+  "slug": "support-central-dashboard",
+  "description": "Central support dashboard — receives text and call requests from remote HA sites",
+  "url": "https://github.com/ishit-archietectlabs/support-central",
+  "arch": ["amd64", "aarch64", "armv7", "i386"],
+  "startup": "application",
+  "boot": "auto",
+  "ingress": true,
+  "ingress_port": 3000,
+  "panel_icon": "mdi:headset",
+  "panel_title": "Support Center",
+  "homeassistant_api": true,
+  "options": {
+    "asterisk_ws_url": "wss://localhost:8089/ws",
+    "sip_username": "agent",
+    "sip_password": "changeme_agent",
+    "sip_domain": "localhost"
+  },
+  "schema": {
+    "asterisk_ws_url": "str",
+    "sip_username": "str",
+    "sip_password": "str",
+    "sip_domain": "str"
+  },
+  "ports": {
+    "3000/tcp": null
+  },
+  "ports_description": {
+    "3000/tcp": "Web UI (via ingress)"
+  }
+}
