@@ -1,11 +1,16 @@
 {
   "name": "Support Central Dashboard",
-  "version": "1.0.0",
-  "slug": "support-central-dashboard",
+  "version": "1.0.1",
+  "slug": "support_central_dashboard",
   "description": "Central support dashboard — receives text and call requests from remote HA sites",
   "url": "https://github.com/ishit-archietectlabs/support-central",
-  "arch": ["amd64", "aarch64", "armv7", "i386"],
-  "startup": "application",
+  "arch": [
+    "amd64",
+    "aarch64",
+    "armv7",
+    "i386"
+  ],
+  "startup": "services",
   "boot": "auto",
   "ingress": true,
   "ingress_port": 3000,
