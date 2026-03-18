@@ -1,6 +1,6 @@
 {
   "name": "Support Central Dashboard",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "slug": "support_central_dashboard",
   "description": "Central support dashboard — receives text and call requests from remote HA sites",
   "url": "https://github.com/ishit-archietectlabs/support-central",
