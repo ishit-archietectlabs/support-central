@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Customer Support Central Dashboard — Manage text and call support requests">
+  <title>Support Central — Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- ========== HEADER ========== -->
+  <header id="app-header">
+    <div class="header-left">
+      <span class="material-icons-round header-icon">headset_mic</span>
+      <h1>Support Central</h1>
+    </div>
+    <div class="header-right">
+      <div id="sip-status" class="status-badge disconnected">
+        <span class="status-dot"></span>
+        <span class="status-text">SIP Disconnected</span>
+      </div>
+      <div id="connection-status" class="status-badge disconnected">
+        <span class="status-dot"></span>
+        <span class="status-text">Offline</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========== MAIN LAYOUT ========== -->
+  <main id="app-main">
+    <!-- LEFT: Request List -->
+    <aside id="requests-panel">
+      <div class="panel-header">
+        <h2>Support Requests</h2>
+        <span id="request-count" class="badge">0</span>
+      </div>
+      <div id="requests-list" class="scrollable">
+        <div id="no-requests" class="empty-state">
+          <span class="material-icons-round">inbox</span>
+          <p>No support requests yet</p>
+          <span class="sub-text">Requests from remote sites will appear here</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- CENTER: Chat / Details -->
+    <section id="detail-panel">
+      <div id="detail-empty" class="empty-state">
+        <span class="material-icons-round">forum</span>
+        <p>Select a request</p>
+        <span class="sub-text">Choose a support request from the left panel to view details and chat</span>
+      </div>
+
+      <div id="detail-content" class="hidden">
+        <div id="detail-header">
+          <div class="detail-info">
+            <h3 id="detail-site-name">Site Name</h3>
+            <span id="detail-type-badge" class="type-badge">TEXT</span>
+            <span id="detail-time" class="detail-time"></span>
+          </div>
+          <div class="detail-actions">
+            <button id="btn-resolve" class="btn btn-success" title="Mark as resolved">
+              <span class="material-icons-round">check_circle</span>
+              Resolve
+            </button>
+          </div>
+        </div>
+
+        <div id="chat-messages" class="scrollable"></div>
+
+        <div id="chat-input-area">
+          <input type="text" id="chat-input" placeholder="Type your reply…" autocomplete="off">
+          <button id="btn-send" class="btn btn-primary">
+            <span class="material-icons-round">send</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT: Phone Panel -->
+    <aside id="phone-panel">
+      <div class="panel-header">
+        <h2>Phone</h2>
+        <span id="phone-status-indicator" class="material-icons-round phone-idle">phone_disabled</span>
+      </div>
+
+      <div id="phone-idle-state">
+        <div class="phone-visual">
+          <div class="phone-circle">
+            <span class="material-icons-round">headset_mic</span>
+          </div>
+          <p class="phone-label">Ready for calls</p>
+          <p class="phone-sub">Incoming calls from remote sites will appear here</p>
+        </div>
+      </div>
+
+      <div id="phone-ringing-state" class="hidden">
+        <div class="phone-visual ringing">
+          <div class="phone-circle ring-animation">
+            <span class="material-icons-round">ring_volume</span>
+          </div>
+          <p class="phone-label" id="caller-name">Incoming Call</p>
+          <p class="phone-sub" id="caller-extension"></p>
+        </div>
+        <div class="phone-actions">
+          <button id="btn-answer" class="btn btn-call answer" title="Answer">
+            <span class="material-icons-round">call</span>
+          </button>
+          <button id="btn-reject" class="btn btn-call reject" title="Reject">
+            <span class="material-icons-round">call_end</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="phone-active-state" class="hidden">
+        <div class="phone-visual active-call">
+          <div class="phone-circle pulse-animation">
+            <span class="material-icons-round">call</span>
+          </div>
+          <p class="phone-label" id="active-caller-name">In Call</p>
+          <p class="phone-sub" id="call-timer">00:00</p>
+        </div>
+        <div class="phone-actions">
+          <button id="btn-mute" class="btn btn-call mute" title="Mute">
+            <span class="material-icons-round">mic</span>
+          </button>
+          <button id="btn-hangup" class="btn btn-call reject" title="Hang up">
+            <span class="material-icons-round">call_end</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Call History -->
+      <div id="call-log">
+        <h4>Recent Calls</h4>
+        <div id="call-log-list" class="scrollable">
+          <p class="empty-sub">No calls yet</p>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- ========== NOTIFICATION TOAST ========== -->
+  <div id="toast-container"></div>
+
+  <!-- ========== INCOMING CALL OVERLAY ========== -->
+  <div id="call-overlay" class="hidden">
+    <div class="overlay-card">
+      <div class="ring-ripple"></div>
+      <span class="material-icons-round overlay-icon ring-animation">ring_volume</span>
+      <h2 id="overlay-caller">Incoming Call</h2>
+      <p id="overlay-site">Unknown Site</p>
+      <div class="overlay-actions">
+        <button id="overlay-answer" class="btn btn-call answer">
+          <span class="material-icons-round">call</span>
+          Answer
+        </button>
+        <button id="overlay-reject" class="btn btn-call reject">
+          <span class="material-icons-round">call_end</span>
+          Decline
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio elements -->
+  <audio id="ringtone" loop preload="auto">
+    <source src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=" type="audio/wav">
+  </audio>
+  <audio id="remote-audio" autoplay></audio>
+
+  <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+  <script src="jssip.bundle.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
