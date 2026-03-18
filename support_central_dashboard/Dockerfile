@@ -12,6 +12,7 @@ RUN npm install --production
 
 # Copy application
 COPY server.js ./
+COPY jssip-entry.js ./
 COPY public/ ./public/
 
 # Copy run script
