@@ -2,7 +2,7 @@ name: "Support Central Dashboard"
 version: "1.0.0"
 slug: "support-central-dashboard"
 description: "Central support dashboard — receives text and call requests from remote HA sites"
-url: "https://github.com/your-username/ha-customer-support"
+url: "https://github.com/ishit-archietectlabs/support-central"
 arch:
   - amd64
   - aarch64
