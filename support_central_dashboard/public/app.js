@@ -1,6 +1,6 @@
 // =============================================================
 // Support Central Dashboard — Client App
-// Socket.IO for real-time + JsSIP WebRTC softphone
+// Socket.IO for real-time chat
 // =============================================================
 
 (function () {
@@ -10,13 +10,7 @@
   const state = {
     requests: [],
     activeRequestId: null,
-    sipRegistered: false,
-    currentSession: null,
-    isMuted: false,
-    callTimer: null,
-    callSeconds: 0,
-    config: {},
-    ua: null
+    config: {}
   };
 
   // ---------- DOM Elements ----------
@@ -36,27 +30,7 @@
     btnSend: $('#btn-send'),
     btnResolve: $('#btn-resolve'),
     connectionStatus: $('#connection-status'),
-    sipStatus: $('#sip-status'),
-    phoneIdleState: $('#phone-idle-state'),
-    phoneRingingState: $('#phone-ringing-state'),
-    phoneActiveState: $('#phone-active-state'),
-    callerName: $('#caller-name'),
-    callerExtension: $('#caller-extension'),
-    activCallerName: $('#active-caller-name'),
-    callTimerEl: $('#call-timer'),
-    btnAnswer: $('#btn-answer'),
-    btnReject: $('#btn-reject'),
-    btnMute: $('#btn-mute'),
-    btnHangup: $('#btn-hangup'),
-    callOverlay: $('#call-overlay'),
-    overlayAnswer: $('#overlay-answer'),
-    overlayReject: $('#overlay-reject'),
-    overlayCaller: $('#overlay-caller'),
-    overlaySite: $('#overlay-site'),
-    phoneStatusIndicator: $('#phone-status-indicator'),
-    callLogList: $('#call-log-list'),
-    toastContainer: $('#toast-container'),
-    remoteAudio: $('#remote-audio')
+    toastContainer: $('#toast-container')
   };
 
   // ---------- Socket.IO ----------
@@ -75,12 +49,7 @@
   socket.on('new-request', (request) => {
     state.requests.unshift(request);
     renderRequestsList();
-    showToast(
-      request.type === 'call' ? 'call' : 'info',
-      `New ${request.type} request from ${request.site_name}`,
-      request.type === 'call' ? 'ring_volume' : 'chat'
-    );
-    playNotificationSound();
+    showToast('info', `New request from ${request.site_name}`, 'chat');
   });
 
   socket.on('chat-message', (data) => {
@@ -106,10 +75,6 @@
     renderRequestsList();
   });
 
-  socket.on('incoming-call', (data) => {
-    showIncomingCall(data);
-  });
-
   // ---------- Load Requests ----------
   async function loadRequests() {
     try {
@@ -118,17 +83,6 @@
       renderRequestsList();
     } catch (e) {
       console.error('Failed to load requests:', e);
-    }
-  }
-
-  // ---------- Load Config + Init SIP ----------
-  async function loadConfig() {
-    try {
-      const res = await fetch('/api/config');
-      state.config = await res.json();
-      initSIP();
-    } catch (e) {
-      console.error('Failed to load config:', e);
     }
   }
 
@@ -149,22 +103,19 @@
       card.className = `request-card${req.id === state.activeRequestId ? ' active' : ''}`;
       card.dataset.requestId = req.id;
 
-      const iconClass = req.type === 'call' ? 'call' : 'text';
-      const iconName = req.type === 'call' ? 'call' : 'chat';
-      const statusBadge = req.status === 'resolved' ? 'resolved' : iconClass;
       const time = formatTime(req.created_at);
 
       card.innerHTML = `
-        <div class="request-icon ${iconClass}">
-          <span class="material-icons-round">${iconName}</span>
+        <div class="request-icon text">
+          <span class="material-icons-round">chat</span>
         </div>
         <div class="request-info">
           <div class="site-name">${escapeHtml(req.site_name)}</div>
-          <div class="request-preview">${escapeHtml(req.message || (req.type === 'call' ? 'Voice call request' : 'Text support request'))}</div>
+          <div class="request-preview">${escapeHtml(req.message || 'Support request')}</div>
         </div>
         <div class="request-meta">
           <span class="request-time">${time}</span>
-          <span class="type-badge ${statusBadge}">${req.status === 'resolved' ? 'Resolved' : req.type.toUpperCase()}</span>
+          <span class="type-badge ${req.status === 'resolved' ? 'resolved' : 'text'}">${req.status === 'resolved' ? 'Resolved' : 'TEXT'}</span>
         </div>
       `;
 
@@ -195,8 +146,8 @@
     els.detailEmpty.classList.add('hidden');
     els.detailContent.classList.remove('hidden');
     els.detailSiteName.textContent = req.site_name;
-    els.detailTypeBadge.textContent = req.type.toUpperCase();
-    els.detailTypeBadge.className = `type-badge ${req.type === 'call' ? 'call' : 'text'}`;
+    els.detailTypeBadge.textContent = 'TEXT';
+    els.detailTypeBadge.className = 'type-badge text';
     els.detailTime.textContent = new Date(req.created_at).toLocaleString();
 
     socket.emit('join-request', requestId);
@@ -266,341 +217,13 @@
     }
   });
 
-  // ---------- JsSIP WebRTC Phone ----------
-  function initSIP() {
-    const { asterisk_ws_url, sip_username, sip_password, sip_domain } = state.config;
-
-    if (!asterisk_ws_url || !sip_username) {
-      console.warn('[SIP] Missing config, skipping SIP init');
-      return;
-    }
-
-    try {
-      const socketJsSIP = new JsSIP.WebSocketInterface(asterisk_ws_url);
-
-      const configuration = {
-        sockets: [socketJsSIP],
-        uri: `sip:${sip_username}@${sip_domain}`,
-        password: sip_password,
-        display_name: 'Support Agent',
-        register: true,
-        session_timers: false
-      };
-
-      state.ua = new JsSIP.UA(configuration);
-
-      state.ua.on('registered', () => {
-        updateSipStatus(true);
-        console.log('[SIP] Registered');
-      });
-
-      state.ua.on('unregistered', () => {
-        updateSipStatus(false);
-        console.log('[SIP] Unregistered');
-      });
-
-      state.ua.on('registrationFailed', (e) => {
-        updateSipStatus(false);
-        console.error('[SIP] Registration failed:', e.cause);
-      });
-
-      state.ua.on('newRTCSession', (e) => {
-        if (e.originator === 'remote') {
-          handleIncomingSIPCall(e.session);
-        }
-      });
-
-      state.ua.on('connected', () => {
-        console.log('[SIP] WebSocket connected');
-      });
-
-      state.ua.on('disconnected', () => {
-        console.log('[SIP] WebSocket disconnected');
-        updateSipStatus(false);
-      });
-
-      state.ua.start();
-
-    } catch (e) {
-      console.error('[SIP] Init error:', e);
-    }
-  }
-
-  function handleIncomingSIPCall(session) {
-    console.log('[SIP] Incoming call');
-
-    state.currentSession = session;
-
-    const callerDisplay = session.remote_identity.display_name || session.remote_identity.uri.user || 'Unknown';
-    const callerURI = session.remote_identity.uri.user || '';
-
-    showIncomingCall({
-      site_name: callerDisplay,
-      sip_extension: callerURI,
-      caller_id: callerDisplay
-    });
-
-    session.on('ended', () => endCall());
-    session.on('failed', () => endCall());
-
-    session.on('confirmed', () => {
-      console.log('[SIP] Call confirmed / answered');
-      showActiveCall();
-    });
-  }
-
-  function answerCall() {
-    if (!state.currentSession) return;
-
-    const options = {
-      mediaConstraints: { audio: true, video: false },
-      pcConfig: {
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-      }
-    };
-
-    state.currentSession.answer(options);
-    showActiveCall();
-    setupRemoteAudio(state.currentSession);
-  }
-
-  function rejectCall() {
-    if (state.currentSession) {
-      try { state.currentSession.terminate(); } catch (e) {}
-    }
-    endCall();
-    addCallLogEntry('Declined', false);
-  }
-
-  function hangupCall() {
-    if (state.currentSession) {
-      try { state.currentSession.terminate(); } catch (e) {}
-    }
-    endCall();
-  }
-
-  function toggleMute() {
-    if (!state.currentSession) return;
-    state.isMuted = !state.isMuted;
-
-    if (state.isMuted) {
-      state.currentSession.mute({ audio: true });
-    } else {
-      state.currentSession.unmute({ audio: true });
-    }
-
-    els.btnMute.classList.toggle('muted', state.isMuted);
-    const icon = els.btnMute.querySelector('.material-icons-round');
-    icon.textContent = state.isMuted ? 'mic_off' : 'mic';
-  }
-
-  function setupRemoteAudio(session) {
-    session.on('peerconnection', (e) => {
-      const pc = e.peerconnection;
-      pc.ontrack = (event) => {
-        if (event.track.kind === 'audio') {
-          const stream = new MediaStream([event.track]);
-          els.remoteAudio.srcObject = stream;
-          els.remoteAudio.play().catch(() => {});
-        }
-      };
-    });
-
-    // Also check if connection already exists
-    if (session.connection) {
-      session.connection.ontrack = (event) => {
-        if (event.track.kind === 'audio') {
-          const stream = new MediaStream([event.track]);
-          els.remoteAudio.srcObject = stream;
-          els.remoteAudio.play().catch(() => {});
-        }
-      };
-
-      // Check existing receivers
-      try {
-        session.connection.getReceivers().forEach(receiver => {
-          if (receiver.track && receiver.track.kind === 'audio') {
-            const stream = new MediaStream([receiver.track]);
-            els.remoteAudio.srcObject = stream;
-            els.remoteAudio.play().catch(() => {});
-          }
-        });
-      } catch (e) {}
-    }
-  }
-
-  // ---------- Call UI State Management ----------
-  function showIncomingCall(data) {
-    els.callerName.textContent = data.site_name || 'Unknown Caller';
-    els.callerExtension.textContent = data.sip_extension ? `Extension: ${data.sip_extension}` : '';
-    els.overlayCaller.textContent = data.site_name || 'Incoming Call';
-    els.overlaySite.textContent = data.sip_extension ? `Extension: ${data.sip_extension}` : 'Support Call';
-
-    els.phoneIdleState.classList.add('hidden');
-    els.phoneRingingState.classList.remove('hidden');
-    els.phoneActiveState.classList.add('hidden');
-    els.callOverlay.classList.remove('hidden');
-
-    els.phoneStatusIndicator.textContent = 'ring_volume';
-    els.phoneStatusIndicator.className = 'material-icons-round phone-ringing';
-
-    playRingtone();
-  }
-
-  function showActiveCall() {
-    const callerText = els.callerName.textContent;
-    els.activCallerName.textContent = callerText;
-
-    els.phoneIdleState.classList.add('hidden');
-    els.phoneRingingState.classList.add('hidden');
-    els.phoneActiveState.classList.remove('hidden');
-    els.callOverlay.classList.add('hidden');
-
-    els.phoneStatusIndicator.textContent = 'call';
-    els.phoneStatusIndicator.className = 'material-icons-round phone-active';
-
-    stopRingtone();
-    startCallTimer();
-    addCallLogEntry(callerText, true);
-  }
-
-  function endCall() {
-    state.currentSession = null;
-    state.isMuted = false;
-
-    els.phoneIdleState.classList.remove('hidden');
-    els.phoneRingingState.classList.add('hidden');
-    els.phoneActiveState.classList.add('hidden');
-    els.callOverlay.classList.add('hidden');
-
-    els.phoneStatusIndicator.textContent = 'phone_disabled';
-    els.phoneStatusIndicator.className = 'material-icons-round phone-idle';
-
-    els.btnMute.classList.remove('muted');
-    els.btnMute.querySelector('.material-icons-round').textContent = 'mic';
-
-    stopRingtone();
-    stopCallTimer();
-
-    if (els.remoteAudio.srcObject) {
-      els.remoteAudio.srcObject = null;
-    }
-  }
-
-  // ---------- Call Timer ----------
-  function startCallTimer() {
-    state.callSeconds = 0;
-    els.callTimerEl.textContent = '00:00';
-    state.callTimer = setInterval(() => {
-      state.callSeconds++;
-      const m = Math.floor(state.callSeconds / 60).toString().padStart(2, '0');
-      const s = (state.callSeconds % 60).toString().padStart(2, '0');
-      els.callTimerEl.textContent = `${m}:${s}`;
-    }, 1000);
-  }
-
-  function stopCallTimer() {
-    if (state.callTimer) {
-      clearInterval(state.callTimer);
-      state.callTimer = null;
-    }
-  }
-
-  // ---------- Call Log ----------
-  function addCallLogEntry(name, answered) {
-    const emptyP = els.callLogList.querySelector('.empty-sub');
-    if (emptyP) emptyP.remove();
-
-    const entry = document.createElement('div');
-    entry.className = `call-log-entry ${answered ? 'incoming' : 'missed'}`;
-    entry.innerHTML = `
-      <span class="material-icons-round">${answered ? 'call_received' : 'call_missed'}</span>
-      <span class="log-name">${escapeHtml(name)}</span>
-      <span class="log-time">${formatTime(new Date().toISOString())}</span>
-    `;
-    els.callLogList.prepend(entry);
-  }
-
-  // ---------- Ringtone ----------
-  function playRingtone() {
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.frequency.value = 440;
-      gain.gain.value = 0.1;
-      osc.start();
-
-      window._ringtoneCtx = ctx;
-      window._ringtoneOsc = osc;
-
-      const pulseGain = () => {
-        if (!window._ringtoneCtx) return;
-        gain.gain.setValueAtTime(0.1, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-        setTimeout(() => {
-          if (!window._ringtoneCtx) return;
-          gain.gain.setValueAtTime(0.1, ctx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-        }, 700);
-        window._ringtoneTimer = setTimeout(pulseGain, 2000);
-      };
-      pulseGain();
-    } catch (e) {}
-  }
-
-  function stopRingtone() {
-    if (window._ringtoneOsc) {
-      try { window._ringtoneOsc.stop(); } catch (e) {}
-      window._ringtoneOsc = null;
-    }
-    if (window._ringtoneCtx) {
-      try { window._ringtoneCtx.close(); } catch(e) {}
-      window._ringtoneCtx = null;
-    }
-    if (window._ringtoneTimer) {
-      clearTimeout(window._ringtoneTimer);
-      window._ringtoneTimer = null;
-    }
-  }
-
-  function playNotificationSound() {
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.frequency.value = 880;
-      gain.gain.value = 0.08;
-      osc.start();
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-      osc.stop(ctx.currentTime + 0.3);
-    } catch (e) {}
-  }
-
-  // ---------- Button Event Listeners ----------
-  els.btnAnswer.addEventListener('click', answerCall);
-  els.btnReject.addEventListener('click', rejectCall);
-  els.overlayAnswer.addEventListener('click', answerCall);
-  els.overlayReject.addEventListener('click', rejectCall);
-  els.btnMute.addEventListener('click', toggleMute);
-  els.btnHangup.addEventListener('click', hangupCall);
-
   // ---------- Status Updates ----------
   function updateConnectionStatus(connected) {
     const badge = els.connectionStatus;
-    badge.className = `status-badge ${connected ? 'connected' : 'disconnected'}`;
-    badge.querySelector('.status-text').textContent = connected ? 'Connected' : 'Offline';
-  }
-
-  function updateSipStatus(registered) {
-    state.sipRegistered = registered;
-    const badge = els.sipStatus;
-    badge.className = `status-badge ${registered ? 'connected' : 'disconnected'}`;
-    badge.querySelector('.status-text').textContent = registered ? 'SIP Online' : 'SIP Disconnected';
+    if (badge) {
+        badge.className = `status-badge ${connected ? 'connected' : 'disconnected'}`;
+        badge.querySelector('.status-text').textContent = connected ? 'Connected' : 'Offline';
+    }
   }
 
   // ---------- Toast Notifications ----------
@@ -642,8 +265,5 @@
   function scrollChatToBottom() {
     els.chatMessages.scrollTop = els.chatMessages.scrollHeight;
   }
-
-  // ---------- Init ----------
-  loadConfig();
 
 })();
