@@ -77,20 +77,21 @@
     });
 
     ua.on('connected', () => {
-      console.log('WebSocket connected');
+      console.log('JsSIP: WebSocket connected');
     });
 
     ua.on('registered', () => {
-      console.log('SIP Registered');
+      console.log('JsSIP: SIP Registered');
       updateStatus(true);
     });
 
     ua.on('registrationFailed', (e) => {
-      console.error('Registration failed:', e);
+      console.error('JsSIP: Registration failed:', e.cause, e.response ? e.response.status_code : 'no response');
       updateStatus(false);
     });
 
     ua.on('disconnected', () => {
+      console.warn('JsSIP: WebSocket disconnected');
       updateStatus(false);
     });
 
