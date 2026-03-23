@@ -1,6 +1,6 @@
 {
   "name": "Support Central Dashboard",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "slug": "support_central_dashboard",
   "description": "Central support dashboard — receives text and call requests from remote HA sites",
   "url": "https://github.com/ishit-archietectlabs/support-central",
@@ -30,7 +30,7 @@
     "sip_domain": "str"
   },
   "ports": {
-    "3000/tcp": null
+    "3000/tcp": 3000
   },
   "ports_description": {
     "3000/tcp": "Web UI (via ingress)"

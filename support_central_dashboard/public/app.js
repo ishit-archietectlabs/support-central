@@ -33,8 +33,14 @@
     toastContainer: $('#toast-container')
   };
 
+  // ---------- Backend Detection ----------
+  // If accessed via HA Ingress (port 8123), use direct port 3000 for backend
+  const backendUrl = window.location.port === '8123'
+    ? `${window.location.protocol}//${window.location.hostname}:3000`
+    : '';
+
   // ---------- Socket.IO ----------
-  const socket = io({ transports: ['websocket', 'polling'] });
+  const socket = io(backendUrl, { transports: ['websocket', 'polling'] });
 
   socket.on('connect', () => {
     updateConnectionStatus(true);
@@ -46,7 +52,7 @@
   // ---------- Load Configuration & SIP ----------
   async function loadConfig() {
     try {
-      const res = await fetch('/api/config');
+      const res = await fetch(`${backendUrl}/api/config`);
       state.config = await res.json();
       initSIP(state.config);
     } catch (e) {
@@ -140,7 +146,7 @@
   // ---------- Load Requests ----------
   async function loadRequests() {
     try {
-      const res = await fetch('/api/requests');
+      const res = await fetch(`${backendUrl}/api/requests`);
       state.requests = await res.json();
       renderRequestsList();
     } catch (e) {
@@ -215,7 +221,7 @@
     socket.emit('join-request', requestId);
 
     try {
-      const res = await fetch(`/api/chat/${requestId}`);
+      const res = await fetch(`${backendUrl}/api/chat/${requestId}`);
       const messages = await res.json();
       els.chatMessages.innerHTML = '';
       messages.forEach(appendChatMessage);
@@ -268,7 +274,7 @@
   els.btnResolve.addEventListener('click', async () => {
     if (!state.activeRequestId) return;
     try {
-      await fetch(`/api/request/${state.activeRequestId}`, {
+      await fetch(`${backendUrl}/api/request/${state.activeRequestId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'resolved' })
