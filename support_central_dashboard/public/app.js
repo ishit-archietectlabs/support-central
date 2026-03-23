@@ -35,7 +35,10 @@
 
   // ---------- Backend Detection ----------
   // If accessed via HA Ingress (port 8123), use direct port 3000 for backend
-  const backendUrl = window.location.port === '8123'
+  console.log("JsSIP Type:", typeof JsSIP);
+if (typeof JsSIP !== 'undefined') console.log("JsSIP Version:", JsSIP.C.USER_AGENT);
+
+let backendUrl = window.location.port === '8123'
     ? `${window.location.protocol}//${window.location.hostname}:3000`
     : '';
 
