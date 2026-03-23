@@ -40,7 +40,62 @@
     updateConnectionStatus(true);
     socket.emit('identify', { role: 'agent', site_name: 'Support Agent' });
     loadRequests();
+    loadConfig(); // Fetch config for SIP
   });
+
+  // ---------- Load Configuration & SIP ----------
+  async function loadConfig() {
+    try {
+      const res = await fetch('/api/config');
+      state.config = await res.json();
+      initSIP();
+    } catch (e) {
+      console.error('Failed to load config:', e);
+    }
+  }
+
+  function initSIP() {
+    if (!state.config.asterisk_ws_url || !state.config.sip_username) {
+      console.warn('SIP config missing, skipping registration');
+      return;
+    }
+
+    console.log('Initializing JsSIP...');
+    const socketInterface = new JsSIP.WebSocketInterface(state.config.asterisk_ws_url);
+    
+    const ua = new JsSIP.UA({
+      sockets: [socketInterface],
+      uri: `sip:${state.config.sip_username}@${state.config.sip_domain}`,
+      password: state.config.sip_password,
+      session_timers: false
+    });
+
+    ua.on('registered', () => {
+      console.log("SIP Registered");
+      setStatus("Online");
+    });
+
+    ua.on('registrationFailed', (e) => {
+      console.error("Registration failed:", e);
+      setStatus("Offline");
+    });
+
+    ua.on('disconnected', () => {
+      setStatus("Offline");
+    });
+
+    ua.start();
+  }
+
+  function setStatus(status) {
+    const textEl = document.querySelector('.status-text');
+    if (textEl) textEl.textContent = status;
+    
+    const badge = els.connectionStatus;
+    if (badge) {
+      badge.className = `status-badge ${status === 'Online' ? 'connected' : 'disconnected'}`;
+    }
+  }
 
   socket.on('disconnect', () => {
     updateConnectionStatus(false);
