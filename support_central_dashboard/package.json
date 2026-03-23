@@ -1,6 +1,6 @@
 {
   "name": "support-central",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Central Support Dashboard for HA Customer Support System",
   "main": "server.js",
   "scripts": {

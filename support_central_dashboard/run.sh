@@ -1,18 +1,19 @@
-#!/usr/bin/env bashio
+#!/bin/bash
 set -e
 
 # ============================================================
 # Support Central Dashboard — Entrypoint
 # ============================================================
 
-export ASTERISK_WS_URL=$(bashio::config 'asterisk_ws_url')
-export SIP_USERNAME=$(bashio::config 'sip_username')
-export SIP_PASSWORD=$(bashio::config 'sip_password')
-export SIP_DOMAIN=$(bashio::config 'sip_domain')
+# Read options from /data/options.json using jq
+export ASTERISK_WS_URL=$(jq --raw-output '.asterisk_ws_url' /data/options.json)
+export SIP_USERNAME=$(jq --raw-output '.sip_username' /data/options.json)
+export SIP_PASSWORD=$(jq --raw-output '.sip_password' /data/options.json)
+export SIP_DOMAIN=$(jq --raw-output '.sip_domain' /data/options.json)
 
 # Determine ingress path if possible
-export INGRESS_PATH=$(bashio::addon.ingress_entry 2>/dev/null || echo "")
+# export INGRESS_PATH=$(bashio::addon.ingress_entry 2>/dev/null || echo "")
 
-bashio::log.info "Starting Support Central Dashboard..."
+echo "[INFO] Starting Support Central Dashboard..."
 cd /app
 exec node server.js

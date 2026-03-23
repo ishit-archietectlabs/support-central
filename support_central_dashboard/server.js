@@ -177,4 +177,10 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`[CENTRAL] Support Dashboard running on port ${PORT}`);
+  console.log("Using manual config:", {
+    asterisk_ws_url: process.env.ASTERISK_WS_URL || 'wss://localhost:8089/ws',
+    sip_username: process.env.SIP_USERNAME || 'agent',
+    sip_password: '****',
+    sip_domain: process.env.SIP_DOMAIN || 'localhost'
+  });
 });

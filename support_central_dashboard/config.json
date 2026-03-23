@@ -1,6 +1,6 @@
 {
   "name": "Support Central Dashboard",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "slug": "support_central_dashboard",
   "description": "Central support dashboard — receives text and call requests from remote HA sites",
   "url": "https://github.com/ishit-archietectlabs/support-central",
@@ -17,7 +17,6 @@
   "ingress_port": 3000,
   "panel_icon": "mdi:headset",
   "panel_title": "Support Center",
-  "homeassistant_api": true,
   "options": {
     "asterisk_ws_url": "wss://localhost:8089/ws",
     "sip_username": "agent",
