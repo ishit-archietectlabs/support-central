@@ -48,52 +48,59 @@
     try {
       const res = await fetch('/api/config');
       state.config = await res.json();
-      initSIP();
+      initSIP(state.config);
     } catch (e) {
       console.error('Failed to load config:', e);
     }
   }
 
-  function initSIP() {
-    if (!state.config.asterisk_ws_url || !state.config.sip_username) {
+  function initSIP(config) {
+    if (!config.asterisk_ws_url || !config.sip_username) {
       console.warn('SIP config missing, skipping registration');
       return;
     }
 
     console.log('Initializing JsSIP...');
-    const socketInterface = new JsSIP.WebSocketInterface(state.config.asterisk_ws_url);
+    const socketInterface = new JsSIP.WebSocketInterface(config.asterisk_ws_url);
     
     const ua = new JsSIP.UA({
       sockets: [socketInterface],
-      uri: `sip:${state.config.sip_username}@${state.config.sip_domain}`,
-      password: state.config.sip_password,
+      uri: `sip:${config.sip_username}@${config.sip_domain}`,
+      password: config.sip_password,
       session_timers: false
     });
 
+    ua.on('connected', () => {
+      console.log('WebSocket connected');
+    });
+
     ua.on('registered', () => {
-      console.log("SIP Registered");
-      setStatus("Online");
+      console.log('SIP Registered');
+      updateStatus(true);
     });
 
     ua.on('registrationFailed', (e) => {
-      console.error("Registration failed:", e);
-      setStatus("Offline");
+      console.error('Registration failed:', e);
+      updateStatus(false);
     });
 
     ua.on('disconnected', () => {
-      setStatus("Offline");
+      updateStatus(false);
     });
 
     ua.start();
   }
 
-  function setStatus(status) {
-    const textEl = document.querySelector('.status-text');
-    if (textEl) textEl.textContent = status;
+  function updateStatus(isOnline) {
+    const el = document.querySelector('.status');
+    if (el) {
+      el.innerText = isOnline ? 'Online' : 'Offline';
+      el.style.color = isOnline ? 'green' : 'red';
+    }
     
     const badge = els.connectionStatus;
     if (badge) {
-      badge.className = `status-badge ${status === 'Online' ? 'connected' : 'disconnected'}`;
+      badge.className = `status-badge ${isOnline ? 'connected' : 'disconnected'}`;
     }
   }
 
