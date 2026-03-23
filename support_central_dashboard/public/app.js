@@ -76,6 +76,7 @@ let backendUrl = window.location.port === '8123'
       sockets: [socketInterface],
       uri: `sip:${config.sip_username}@${config.sip_domain}`,
       password: config.sip_password,
+      authorization_user: config.sip_username,
       session_timers: false
     });
 
